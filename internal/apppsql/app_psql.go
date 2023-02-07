@@ -2,11 +2,8 @@ package apppsql
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/hfleury/me-auth/internal/appauth"
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
 )
 
 type AppPsql struct {
@@ -21,30 +18,14 @@ func NewAppPsql(
 	}
 }
 
-func (ap *AppPsql) ConPsql() (pgx.ConnConfig, error) {
-	ui64, err := strconv.ParseUint(ap.AppAuth.EnvVars["AUTH_POSTGRESQL_PORT"], 10, 64)
-	if err != nil {
-		fmt.Printf("Error to parse db port string to uint16")
-		return pgx.ConnConfig{}, err
-	}
-	portui16 := uint16(ui64)
+func (ap *AppPsql) ConnPsql() string {
+	usn := ap.AppAuth.EnvVars["AUTH_POSTGRESQL_USER"]
+	pass := ap.AppAuth.EnvVars["AUTH_POSTGRESQL_PASS"]
+	host := ap.AppAuth.EnvVars["AUTH_POSTGRESQL_HOST"]
+	port := ap.AppAuth.EnvVars["AUTH_POSTGRESQL_PORT"]
+	dbname := ap.AppAuth.EnvVars["AUTH_POSTGRESQL_DB"]
 
-	logLevel, err := strconv.Atoi(ap.AppAuth.EnvVars["AUTH_POSTGRESQL_LOGLEVEL"])
-	if err != nil {
-		fmt.Printf("Error to parse log level string to int")
-		return pgx.ConnConfig{}, err
-	}
+	strConn := fmt.Sprintf("postgres://%v:%v@%v:%v/%v", usn, pass, host, port, dbname)
 
-	pgConfig := pgx.ConnConfig{
-		Config: pgconn.Config{
-			Host:     ap.AppAuth.EnvVars["AUTH_POSTGRESQL_HOST"],
-			Port:     portui16,
-			Database: ap.AppAuth.EnvVars["AUTH_POSTGRESQL_DB"],
-			User:     ap.AppAuth.EnvVars["AUTH_POSTGRESQL_USER"],
-			Password: ap.AppAuth.EnvVars["AUTH_POSTGRESQL_PASS"],
-		},
-		LogLevel: pgx.LogLevel(logLevel),
-	}
-
-	return pgConfig, nil
+	return strConn
 }

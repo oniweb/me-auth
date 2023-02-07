@@ -12,6 +12,7 @@ type AppAuth struct {
 
 func NewAppAuth() *AppAuth {
 	appAuth := new(AppAuth)
+	appAuth.EnvVars = make(map[string]string)
 	appAuth.setEnv()
 
 	return appAuth
@@ -28,6 +29,7 @@ func (aa *AppAuth) setEnv() error {
 }
 
 func (aa *AppAuth) buildEnvVars() {
+
 	// PostgreSQL
 	aa.EnvVars["AUTH_POSTGRESQL_USER"] = os.Getenv("AUTH_POSTGRESQL_USER")
 	aa.EnvVars["AUTH_POSTGRESQL_PORT"] = os.Getenv("AUTH_POSTGRESQL_PORT")
