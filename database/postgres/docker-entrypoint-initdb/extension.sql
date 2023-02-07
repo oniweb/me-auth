@@ -1,0 +1,2 @@
+CREATE DATABASE meauthdb OWNER rootuser;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

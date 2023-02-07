@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  dbpsql:
+    image: postgres:15.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=rootuser
+      - POSTGRES_PASSWORD=nosecret
+      - POSTGRESQL_DB=meauthdb
+    ports:
+      - '5432:5432'
+    volumes:
+      - "./database/postgres/docker-entrypoint-initdb/extension.sql:/docker-entrypoint-initdb.d/extension.sql"
+
+volumes:
+  db:
+    driver: local  

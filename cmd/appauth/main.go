@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,36 +10,30 @@ import (
 
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/manage"
-	"github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-oauth2/oauth2/v4/server"
-	"github.com/go-oauth2/oauth2/v4/store"
 	"github.com/google/uuid"
 	"github.com/hfleury/me-auth/internal/appauth"
 	"github.com/hfleury/me-auth/internal/apppsql"
 	"github.com/hfleury/me-auth/pkg/appauth/middleware"
-	"github.com/jackc/pgx"
-	pg "github.com/vgarvardt/go-oauth2-pg"
+	pgx4 "github.com/jackc/pgx/v4"
+	pg "github.com/vgarvardt/go-oauth2-pg/v4"
 	"github.com/vgarvardt/go-pg-adapter/pgx4adapter"
 )
 
 func main() {
-	//ctx := context.TODO()
+	ctx := context.TODO()
 	authApp := appauth.NewAppAuth()
-
 	appPsql := apppsql.NewAppPsql(authApp)
-	connConfig, err := appPsql.ConPsql()
-	if err != nil {
-		log.Fatalf("error setting db - error: %v", err)
-	}
 
-	manager := manage.NewDefaultManager()
-	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
-	manager.MustTokenStorage(store.NewMemoryTokenStore())
-
-	pgxConn, err := pgx.Connect(connConfig)
+	connConfig := appPsql.ConnPsql()
+	pgxConn, err := pgx4.Connect(ctx, connConfig)
 	if err != nil {
 		log.Fatalf("error connecting to db - error: %v", err)
+		panic(err)
 	}
+	defer pgxConn.Close(ctx)
+
+	manager := manage.NewDefaultManager()
 
 	// use PostgreSQL token store with pgx.Connection adapter
 	adapter := pgx4adapter.NewConn(pgxConn)
@@ -48,9 +43,6 @@ func main() {
 	clientStore, _ := pg.NewClientStore(adapter)
 
 	manager.MapTokenStorage(tokenStore)
-	manager.MapClientStorage(clientStore)
-
-	clientStore := store.NewClientStore()
 	manager.MapClientStorage(clientStore)
 
 	srv := server.NewDefaultServer(manager)
@@ -74,11 +66,6 @@ func main() {
 	http.HandleFunc("/credentials", func(w http.ResponseWriter, r *http.Request) {
 		clientId := uuid.New().String()
 		clientSecret := uuid.New().String()
-		err := clientStore.Set(clientId, &models.Client{
-			ID:     clientId,
-			Secret: clientSecret,
-			Domain: "http://localhost:9094",
-		})
 		if err != nil {
 			fmt.Println(err.Error())
 		}
