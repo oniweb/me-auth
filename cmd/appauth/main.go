@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/manage"
@@ -12,15 +13,42 @@ import (
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/go-oauth2/oauth2/v4/store"
 	"github.com/google/uuid"
+	"github.com/hfleury/me-auth/internal/appauth"
+	"github.com/hfleury/me-auth/internal/apppsql"
 	"github.com/hfleury/me-auth/pkg/appauth/middleware"
+	"github.com/jackc/pgx"
+	pg "github.com/vgarvardt/go-oauth2-pg"
+	"github.com/vgarvardt/go-pg-adapter/pgx4adapter"
 )
 
 func main() {
-	//authApp := appauth.NewAppAuth()
+	//ctx := context.TODO()
+	authApp := appauth.NewAppAuth()
+
+	appPsql := apppsql.NewAppPsql(authApp)
+	connConfig, err := appPsql.ConPsql()
+	if err != nil {
+		log.Fatalf("error setting db - error: %v", err)
+	}
 
 	manager := manage.NewDefaultManager()
 	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
 	manager.MustTokenStorage(store.NewMemoryTokenStore())
+
+	pgxConn, err := pgx.Connect(connConfig)
+	if err != nil {
+		log.Fatalf("error connecting to db - error: %v", err)
+	}
+
+	// use PostgreSQL token store with pgx.Connection adapter
+	adapter := pgx4adapter.NewConn(pgxConn)
+	tokenStore, _ := pg.NewTokenStore(adapter, pg.WithTokenStoreGCInterval(time.Minute))
+	defer tokenStore.Close()
+
+	clientStore, _ := pg.NewClientStore(adapter)
+
+	manager.MapTokenStorage(tokenStore)
+	manager.MapClientStorage(clientStore)
 
 	clientStore := store.NewClientStore()
 	manager.MapClientStorage(clientStore)
